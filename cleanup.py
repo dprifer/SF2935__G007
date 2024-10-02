@@ -9,7 +9,7 @@ class removeRows:
     file_path = 'project_train.csv'
     rows_to_remove = [85, 95]  # These correspond to energy and loudness outliers
 
-    prj_train_new = cleanup.removeRows(file_path, rows_to_remove).process_rows()
+    prj_train_new, headers = cleanup.removeRows(file_path, rows_to_remove).process_rows()
     """
     def __init__(self, file_path, rows_to_remove=None):
         # Default
@@ -34,7 +34,7 @@ class removeRows:
         # Reset the index after row removal
         self.df = self.df.reset_index(drop=True)
 
-        return self.df.to_numpy()
+        return self.df.to_numpy(), self.df.columns.to_numpy()
 
 
 class modifyRows:
@@ -50,7 +50,7 @@ class modifyRows:
         (95, 4, -6.542)
     ]
 
-    prj_train_new = cleanup.modifyRows(file_path, rows_to_modify).modify_values()
+    prj_train_new, headers = cleanup.modifyRows(file_path, rows_to_modify).modify_values()
     """
     def __init__(self, file_path, modifications=None):
         # Default
@@ -65,7 +65,7 @@ class modifyRows:
         self.df = pd.read_csv(self.file_path)
 
     def modify_values(self):
-
+        print(self.df)
         for triplet in self.modifications:
             row_num, col_num, new_value = triplet
 
@@ -78,5 +78,5 @@ class modifyRows:
                 print(f"Row {row_num}, Column {col_num} new value: {new_value}")
             else:
                 print(f"\nInvalid index: Row {row_num}, Column {col_num} does not exist.")
-
+        print(self.df.columns)
         return self.df.to_numpy()
