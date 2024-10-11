@@ -1,5 +1,8 @@
 from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
 import pandas as pd
+
+from ISLP import confusion_table
 
 
 def generate_train_test_split(df, vars_to_drop=[]):
@@ -10,7 +13,7 @@ def generate_train_test_split(df, vars_to_drop=[]):
     Params:
     -------
     df : pandas.DataFrame
-        The labels should match the original data frame of song data.
+        The columns should include each of the columns of the original data frame of song data.
     vars_to_drop : list
         A list of labels containing variables not to be included in the model.
 
