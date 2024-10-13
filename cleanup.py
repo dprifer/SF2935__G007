@@ -7,14 +7,14 @@ class removeRows:
     import cleanup
 
     file_path = 'project_train.csv'
-    rows_to_remove = [85, 95]  # These correspond to energy and loudness outliers
+    rows_to_remove = [85, 96]  # These correspond to energy and loudness outliers
 
     prj_train_new, headers = cleanup.removeRows(file_path, rows_to_remove).process_rows()
     """
     def __init__(self, file_path, rows_to_remove=None):
         # Default
         if rows_to_remove is None:
-            rows_to_remove = [85, 95]
+            rows_to_remove = [85, 96]
 
         self.file_path = file_path
         self.rows_to_remove = rows_to_remove
@@ -65,7 +65,6 @@ class modifyRows:
         self.df = pd.read_csv(self.file_path)
 
     def modify_values(self):
-        print(self.df)
         for triplet in self.modifications:
             row_num, col_num, new_value = triplet
 
@@ -78,5 +77,5 @@ class modifyRows:
                 print(f"Row {row_num}, Column {col_num} new value: {new_value}")
             else:
                 print(f"\nInvalid index: Row {row_num}, Column {col_num} does not exist.")
-        print(self.df.columns)
-        return self.df.to_numpy()
+
+        return self.df.to_numpy(), self.df.columns.to_numpy()
