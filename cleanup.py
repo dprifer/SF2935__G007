@@ -65,7 +65,6 @@ class modifyRows:
         self.df = pd.read_csv(self.file_path)
 
     def modify_values(self):
-        print(self.df)
         for triplet in self.modifications:
             row_num, col_num, new_value = triplet
 
@@ -78,5 +77,5 @@ class modifyRows:
                 print(f"Row {row_num}, Column {col_num} new value: {new_value}")
             else:
                 print(f"\nInvalid index: Row {row_num}, Column {col_num} does not exist.")
-        print(self.df.columns)
-        return self.df.to_numpy()
+
+        return self.df.to_numpy(), self.df.columns.to_numpy()
