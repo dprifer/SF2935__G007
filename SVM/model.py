@@ -2,7 +2,10 @@ from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, precision_score, recall_score, cohen_kappa_score
 
 
-def svm_model(kernel, predictor_train, response_train, predictors_test, response_test, c = 1, gamma = 'scale', metrics = 'single', i = 0):
+def svm_model(kernel, predictor_train, response_train, predictors_test, response_test, c = 1, gamma = None, metrics = 'single', i = 0):
+    if gamma is None:
+        gamma = 'scale'
+
     model = SVC(kernel=kernel, C=c, gamma=gamma, random_state=0)
     model.fit(predictor_train, response_train)
 
