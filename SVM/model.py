@@ -10,11 +10,11 @@ def svm_model(kernel, predictor_train, response_train, predictors_test, response
     model.fit(predictor_train, response_train)
 
     # Evaluate SVM
-    response_pred_linear = model.predict(predictors_test)
-    accuracy = accuracy_score(response_test, response_pred_linear)
-    precision = precision_score(response_test, response_pred_linear)
-    recall = recall_score(response_test, response_pred_linear)
-    kappa = cohen_kappa_score(response_test, response_pred_linear)
+    response_pred = model.predict(predictors_test)
+    accuracy = accuracy_score(response_test, response_pred)
+    precision = precision_score(response_test, response_pred)
+    recall = recall_score(response_test, response_pred)
+    kappa = cohen_kappa_score(response_test, response_pred)
     if metrics == 'single':
         print(f"Accuracy: {accuracy * 100:.2f}%")
         print(f"Precision: {precision * 100:.2f}%")
