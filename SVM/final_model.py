@@ -158,10 +158,12 @@ for i in range(len(predictors_train.columns)):
             y_min, y_max = X[:, 1].min(), X[:, 1].max()
             ax.set_xlim(x_min, x_max)
             ax.set_ylim(y_min, y_max)
+            ax.set_xlabel(predictors_train.columns[feature1], fontsize=16)
+            ax.set_ylabel(predictors_train.columns[feature2], fontsize=16)
         else:
             ax.plot([0, 1], [1, 0], transform=ax.transAxes, color='black', linewidth=2)
-            ax.set_xlabel(predictors_train.columns[feature1])
-            ax.set_ylabel(predictors_train.columns[feature2])
+            ax.set_xlabel(predictors_train.columns[feature1], fontsize=16)
+            ax.set_ylabel(predictors_train.columns[feature2], fontsize=16)
             # ax.set_xticks([])
             # ax.set_yticks([])
             ax.tick_params(axis='x', colors='white')
@@ -177,3 +179,49 @@ for i in range(len(predictors_train.columns)):
 
 plt.tight_layout()
 plt.savefig('SVM_DecisionBoundaries.eps', format='eps')
+plt.show()
+
+
+#########################################################
+###                 LINEAR VS RBF                     ###
+#########################################################
+
+fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(12, 6), sharex=False, sharey=True)
+
+X = predictors_train.to_numpy()[:, [2, 1]]
+classifier = SVC(kernel='linear', random_state=0).fit(X, response_train)
+disp1 = DecisionBoundaryDisplay.from_estimator(
+                classifier, X, response_method="predict",
+                xlabel=predictors_train.columns[0],
+                ylabel=predictors_train.columns[1],
+                alpha=0.5, ax=axes[0], cmap=cmap_light
+            )
+
+axes[0].scatter(X[:, 0], X[:, 1], c=response_train, cmap=ListedColormap(cmap_bold), edgecolor="k", alpha=0.7)
+
+x_min, x_max = X[:, 0].min(), X[:, 0].max()
+y_min, y_max = X[:, 1].min(), X[:, 1].max()
+axes[0].set_xlim(x_min, x_max)
+axes[0].set_ylim(y_min, y_max)
+axes[0].set_xlabel(predictors_train.columns[0], fontsize=16)
+axes[0].set_ylabel(predictors_train.columns[1], fontsize=16)
+
+classifier = SVC(kernel='rbf', random_state=0).fit(X, response_train)
+disp2 = DecisionBoundaryDisplay.from_estimator(
+                classifier, X, response_method="predict",
+                xlabel=predictors_train.columns[0],
+                ylabel=predictors_train.columns[1],
+                alpha=0.5, ax=axes[1], cmap=cmap_light
+            )
+
+axes[1].scatter(X[:, 0], X[:, 1], c=response_train, cmap=ListedColormap(cmap_bold), edgecolor="k", alpha=0.7)
+
+x_min, x_max = X[:, 0].min(), X[:, 0].max()
+y_min, y_max = X[:, 1].min(), X[:, 1].max()
+axes[1].set_xlim(x_min, x_max)
+axes[1].set_ylim(y_min, y_max)
+axes[1].set_ylabel('')
+
+plt.tight_layout()
+plt.savefig('SVM_DecisionBoundaries_linVSrbf.eps', format='eps')
+plt.show()
