@@ -1,0 +1,237 @@
+---
+title: "Tree based methods"
+author: "Pia Glimmerfors"
+date: "2024-10-16"
+output: html_document
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+```
+
+```{r, include=FALSE}
+rm(list=ls()) # Clear variables in enviroment
+
+library(tidyverse)
+library(randomForest)
+library(rpart)
+library(rpart.plot)
+library(gbm)
+library(caret)
+library(car)
+library(tidymodels)
+```
+
+
+Loading data, fixing misslabled values, splitting into test and training sets
+```{r}
+test_df <- read.csv("project_test.csv")
+train_df <- read.csv("project_train.csv")
+
+# Change values in misslabled rows
+train_df$energy[85] <- 7.34e-02
+train_df$loudness[95] <- -6.542
+
+# Change from int to factor
+test_df$key <- factor(test_df$key)
+test_df$mode <- factor(test_df$mode)
+train_df$key <- factor(train_df$key)
+train_df$mode <- factor(train_df$mode)
+train_df$Label <- factor(train_df$Label)
+
+# Split into train and test data
+set.seed(32)
+data_split <- initial_split(train_df, prop = 0.8)
+train_data <- training(data_split)
+test_data <- testing(data_split)
+```
+
+
+### Decision tree
+
+```{r, fig.width=11, fig.height=6}
+set.seed(32)
+
+model_tree <- rpart(Label ~., data = train_data)  # Constructing decision tree
+pred_tree <- predict(model_tree, test_data, type = "class") # Making predictions on test data
+
+rpart.plot(model_tree, fallen.leaves = FALSE)  # Plot decision tree
+confusionMatrix(pred_tree, test_data$Label) # Plot confusion matrix
+```
+
+
+### Random forest
+
+```{r}
+set.seed(32)
+
+# Constructing random forest
+model_rf <- randomForest(x = train_data[,-12], y = train_data[,12], xtest = test_data[,-12], ytest = test_data[,12], 
+                         type = "classification")
+
+confusionMatrix(model_rf$test$predicted, test_data$Label)  # Print confusion matrix 
+
+```
+
+
+### Gradient Boosting
+
+```{r}
+set.seed(32)
+
+train_data_gbm <- train_data %>% 
+  mutate(Label = as.numeric(Label)) %>% 
+  mutate(Label = if_else(Label == 1, 0, 1))
+
+# Constructing gradient boosted tree
+model_gbm <- gbm(Label ~ . , data = train_data_gbm, n.trees = 100, distribution = "bernoulli", interaction.depth = 9)  
+
+# Making predictions from test data
+pred_gbm <- predict(model_gbm, test_data[-12])
+pred_gbm <- factor(sapply(pred_gbm, function(x) ifelse(x >= 0, 1, 0)))
+
+confusionMatrix(as.factor(pred_gbm), test_data$Label) # Plot confusion matrix
+
+```
+
+
+### Tables to compare methods
+```{r}
+# function to calculate error rate
+error_rate <- function(pred,test){
+  counter <- 0
+  for (i in 1:(nrow(test))){
+    if(pred[i] != test[i,12])
+       counter <- counter + 1
+  }
+  return(counter/nrow(test))
+}
+pred_rf <- model_rf$test$predicted
+knitr::kable(matrix(nrow = 3, ncol = 2, 
+                    data = c("Decision tree", 
+                             "Gradient boosting", 
+                             "Random forest", 
+                             error_rate(pred_tree, test_data), 
+                             error_rate(pred_gbm, test_data), 
+                             error_rate(pred_rf, test_data))), 
+             col.names = c("Model type", "Error rate"),
+             caption = "Error rates found for the different models tested.")
+```
+
+
+```{r}
+rf_tab <- as_tibble(colnames(train_data[,1:11])) %>%
+  add_column(as.data.frame(model_rf$importance)) %>%
+  rename(var = value)
+gbm_tab <- as.data.frame(summary(model_gbm,plotit = F))  # Table with relative information of each independent variable
+
+influence_tab <- inner_join(gbm_tab,  rf_tab, by = "var")
+colnames(influence_tab) <- c("Variable", "Relative Influence", "Mean decerase gini")
+knitr::kable(influence_tab, caption = "Table showing significance of each predictor in the model found through gradient boost and random forest")
+```
+
+
+
+
+
+
+
+
+### Cross validation to find best parameters in gradient boosting
+
+```{r}
+# Function which returns the mean and standard deviation from 10-fold cross-validation
+# given the input 'D', which is the interaction.depth used in gradient boosting
+
+cv_Label_depth <- function(D){
+  training_set <- train_data_gbm
+  folds = createFolds(training_set$Label, k = 10)
+  
+  cv = lapply(folds, function(x) {
+    training_fold = training_set[-x, ] # training fold =  training set minus (-) its sub test fold
+    test_fold = training_set[x, ] # here we describe the test fold individually
+
+    classifier = gbm(Label ~ . , data = training_fold, 
+                     n.trees = 100, 
+                     distribution = "bernoulli", 
+                     interaction.depth = D)
+    
+    Label_pred = as.data.frame(predict(classifier, newdata = test_fold[,-12]))
+    Label_pred <- Label_pred %>%  mutate(pred = if_else(Label_pred[1] <= 0, 0 , 1))
+    cm = table(as_vector(test_fold[, 12]), Label_pred$pred)
+    accuracy = (cm[1,1] + cm[2,2]) / (cm[1,1] + cm[2,2] + cm[1,2] + cm[2,1])
+    return(accuracy)
+  })
+  
+  cv_mean <- mean(as.numeric(cv))
+  cv_sd <- sd(as.numeric(cv))
+  return(c(cv_mean, cv_sd))
+}
+
+cv_Label_ntrees <- function(N){
+  training_set <- train_data_gbm
+  folds = createFolds(training_set$Label, k = 10)
+  
+  cv = lapply(folds, function(x) {
+    training_fold = training_set[-x, ] # training fold =  training set minus (-) it's sub test fold
+    test_fold = training_set[x, ] # here we describe the test fold individually
+
+    classifier = gbm(Label ~ . , data = training_fold, 
+                     n.trees = N, 
+                     distribution = "bernoulli", 
+                     interaction.depth = 9) ## interaction depth 9 found in CV
+    
+    Label_pred = as.data.frame(predict(classifier, newdata = test_fold[,-12]))
+    Label_pred <- Label_pred %>%  mutate(pred = if_else(Label_pred[1] <= 0, 0 , 1))
+    cm = table(as_vector(test_fold[, 12]), Label_pred$pred)
+    accuracy = (cm[1,1] + cm[2,2]) / (cm[1,1] + cm[2,2] + cm[1,2] + cm[2,1])
+    return(accuracy)
+  })
+  
+  cv_mean <- mean(as.numeric(cv))
+  cv_sd <- sd(as.numeric(cv))
+  return(c(cv_mean, cv_sd))
+}
+
+```
+
+```{r, include = FALSE}
+set.seed(32)
+
+D <- seq(1, 20, 1)
+cv_means <- c()
+cv_sds <- c()
+
+for(d in D){
+  accuracy <- cv_Label_depth(d)
+  cv_means <- append(cv_means, accuracy[1])
+  cv_sds <- append(cv_sds, accuracy[2])
+}
+cv_se <- cv_sds/sqrt(10)
+
+
+
+N <- seq(10, 150, 10)
+cv_means_ntree <- c()
+cv_sds_ntree <- c()
+
+for(n in N){
+  accuracy_ntree <- cv_Label_ntrees(n)
+  cv_means_ntree <- append(cv_means_ntree, accuracy_ntree[1])
+  cv_sds_ntree <- append(cv_sds_ntree, accuracy_ntree[2])
+}
+cv_se_ntree <- cv_sds_ntree/sqrt(10)
+```
+
+```{r}
+#Plotting mean cv-error against interaction.depth with error bars showing standard deviation
+plot(D, 1-cv_means, ylab = "CV error", ylim = c(0.1,0.2))
+arrows(D, 1-cv_means - cv_se, D, 1-cv_means + cv_se, code=3, angle=90, length=0.08)
+abline(h = 1-cv_means[20]+cv_se[20], lty = 2)
+
+plot(N, 1-cv_means_ntree, ylab = "CV error", ylim = c(0.1,0.2))
+arrows(N, 1-cv_means_ntree - cv_se_ntree, N, 1-cv_means_ntree + cv_se_ntree, code=3, angle=90, length=0.08)
+abline(h = 1-cv_means_ntree[14]+cv_se_ntree[14], lty = 2)
+```
+
+
