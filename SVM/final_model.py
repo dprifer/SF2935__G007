@@ -58,4 +58,4 @@ response_pred = model.predict(testing_set_transformed)
 
 testing_set_transformed['Label'] = response_pred
 
-#print(testing_set_transformed)
+data_test.to_csv('project_test_predictions_SVM.csv', index=False)
