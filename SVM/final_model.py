@@ -11,16 +11,16 @@ from sklearn import preprocessing
 from sklearn.svm import SVC
 from sklearn.inspection import DecisionBoundaryDisplay
 
-
 train_file_path = '../project_train.csv'
 test_file_path = '../project_test.csv'
 
 data_train = pd.read_csv(train_file_path)
 data_test = pd.read_csv(test_file_path)
 
-features_needed = ['danceability','speechiness', 'liveness', 'loudness']  # Based on the feature selection process described in the report
+features_needed = ['speechiness', 'liveness', 'energy', 'loudness', 'valence']  # Based on the feature selection process described in the report
 
 training_set = data_train[features_needed + ['Label']]
+
 rows_to_remove = [68, 84, 94]  # 68: speechiness outlier, 84: energy false data, 94: loudness false data
 print(f'Rows removed: \n {training_set.iloc[rows_to_remove]}')
 training_set = training_set.drop(rows_to_remove)
@@ -30,9 +30,10 @@ testing_set = data_test[features_needed]
 
 # Transformation and scaling
 vars_to_transform = [
-    "danceability",
+    "energy",
     "speechiness",
-    "liveness"
+    "liveness",
+    "valence",
 ]
 
 training_set_transformed = training_set.copy()
@@ -43,7 +44,6 @@ testing_set_transformed = testing_set.copy()
 testing_set_transformed[vars_to_transform] = testing_set_transformed[vars_to_transform].transform(logit)
 testing_set_transformed[vars_to_transform + ['loudness']] = preprocessing.scale(testing_set_transformed[vars_to_transform + ['loudness']])
 
-
 #########################################################
 ###                    TRAINING                       ###
 #########################################################
@@ -51,11 +51,11 @@ testing_set_transformed[vars_to_transform + ['loudness']] = preprocessing.scale(
 predictors_train = training_set_transformed[features_needed]
 response_train = training_set_transformed['Label']
 
-model = SVC(kernel='rbf', random_state=0)
+model = SVC(kernel='rbf', random_state=0, C=1, gamma=1)
 model.fit(predictors_train, response_train)
 
 response_pred = model.predict(testing_set_transformed)
 
-testing_set_transformed['Label'] = response_pred
+data_test['Label_Pred'] = response_pred
 
 data_test.to_csv('project_test_predictions_SVM.csv', index=False)
