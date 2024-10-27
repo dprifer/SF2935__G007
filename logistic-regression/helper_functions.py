@@ -41,6 +41,21 @@ def generate_train_test_split(df, vars_to_drop=[]):
     return train_test_split(encoded_data, response, test_size=0.2, random_state=0)
 
 
+def encode_data(df, vars_to_drop=[]):
+
+    all_predictors = df.drop(vars_to_drop + ["Label"], axis=1)
+    response = df["Label"]
+
+    # We drop_first because one of the variables in each of key,
+    # mode is determined by the values of the others
+    # (for example mode != 0 implies mode = 1)
+    encoded_data = pd.get_dummies(
+        all_predictors, columns=["key", "mode"], drop_first=True, dtype=float
+    )
+
+    return encoded_data.drop(["1"], axis=1), response
+
+
 def iterate_forward_selection(predictor_df, response, initial_vars, other_vars):
     selected_vars = initial_vars.copy()
     new_other_vars = other_vars.copy()
